@@ -1,8 +1,10 @@
-#!/usr/bin/env Rscript --vanilla
+#!/usr/bin/env Rscript
+#dyn.load("/project/alfredo/libs/geos/3.10.2/lib64/libgeos.so.3.10.2")
+#dyn.load("/project/alfredo/libs/geos/3.10.2/lib64/libgeos_c.so.1")
 
 ##Check to see if necessary packages are installed
 #CRAN packages
-cran.packages <- c("optparse", "yaml", "igraph", "Rtsne", "spam", "MCMCprecision")
+cran.packages <- c("optparse", "yaml", "igraph", "Rtsne", "spam", "MCMCprecision", "json")
 
 cran.package.check <- lapply(cran.packages, FUN = function(x) {
     if (!require(x, character.only = TRUE)) {
@@ -18,6 +20,9 @@ bioc.package.check <- lapply(bioc.packages, FUN = function(x) {
         BiocManager::install(x)
     }
 })
+
+#Initialise conda environment
+selectSCTKConda()
 
 ## Function to parse arguments from yaml file
 .parseConfig <- function(sctkConfig, arguments) {
@@ -44,6 +49,49 @@ bioc.package.check <- lapply(bioc.packages, FUN = function(x) {
     for (file in c(decontx_AbsFileName, mat_AbsFileName, AbsColData, AbsDecontXUMAP, AbsScrubletTSNE, AbsScrubletUMAP)) {
         if (!file.exists(file)) {print(paste('The following file cannot be accessed', file))}
     }
+}
+
+
+## Function to extract useful data from SCE cell object
+extractDensityAndCumsum <- function(dataset, tag) {
+    out <- list(
+        density=list(
+            title = paste0(tag, "_density"),
+            description = paste0("Distribution of ", tag, " count per cell"),
+            data = list()
+        ), 
+        cumsum=list(
+            title = paste0(tag, "_cumsum"),
+            description = paste0("Cumulative distribution of ", tag, " count per cell"),
+            data = list()
+        ))
+    
+    d <- density(dataset)
+    out$density$data$x <- d$x
+    out$density$data$y <- d$y
+
+    cumsum_x <- sort(dataset, decreasing=T)
+    cumsum_y <- 1:length(x) / length(x)
+
+    out$cumsum$data$x <- cumsum_x
+    out$cumsum$data$y <- cumsum_y
+
+    return(out)
+}
+
+getSampleSummaryStatsJSON <- function(sce) {
+    stats <- list(
+        sample = unique(sce$sample),
+        UMI = list(),
+        genes = list(),
+        counts = list()
+    )
+
+    stats$UMI <- extractDensityAndCumsum(sce$total, "UMI")
+    stats$genes <- extractDensityAndCumsum(sce$detected, "genes")
+    stats$counts <- extractDensityAndCumsum(colSums(sce@assays@data$counts), "reads")
+
+    return(stats)
 }
 
 ### helper function for importing Mito gene set
@@ -472,8 +520,8 @@ for(i in seq_along(process)) {
 
     mitoInfo <- .importMito(MitoImport=MitoImport, MitoType=MitoType)
 
-    cellQCAlgos <- c("QCMetrics", "scDblFinder", "cxds", "bcds", "scrublet", "doubletFinder",
-    "cxds_bcds_hybrid", "decontX", "decontX_bg", "soupX", "soupX_bg")
+    cellQCAlgos <- c("QCMetrics", "scDblFinder", "cxds", "bcds", "doubletFinder",
+    "cxds_bcds_hybrid", "decontX", "decontX_bg", "soupX", "soupX_bg") #scrublet excluded due to segfault
 
     if (dataType == "Cell") {
         if (is.null(cellSCE) && (preproc %in% c("BUStools", "SEQC"))) {
@@ -616,6 +664,10 @@ for(i in seq_along(process)) {
             write.csv(QCsummary, file.path(directory,
                                            samplename,
                                            paste0("SCTK_", samplename,'_cellQC_summary.csv')))
+            JSONsummary <- getSampleSummaryStatsJSON(mergedFilteredSCE)
+            write_json(JSONsummary, file.path(directory,
+                                              samplename,
+                                              paste0("SCTK_", samplename,'_cellQC_counts.json')))
         }
 
         if ((dataType == "Droplet") & (!isTRUE(detectCell))) {
@@ -672,6 +724,10 @@ for(i in seq_along(process)) {
             write.csv(QCsummary, file.path(directory,
                                            samplename,
                                            paste0("SCTK_", samplename,'_cellQC_summary.csv')))
+            JSONsummary <- getSampleSummaryStatsJSON(mergedFilteredSCE)
+            write_json(JSONsummary, file.path(directory,
+                                              samplename,
+                                              paste0("SCTK_", samplename,'_cellQC_counts.json')))
         }
 
     }
