@@ -4,7 +4,7 @@
 
 ##Check to see if necessary packages are installed
 #CRAN packages
-cran.packages <- c("optparse", "yaml", "igraph", "Rtsne", "spam", "MCMCprecision", "json")
+cran.packages <- c("optparse", "yaml", "igraph", "Rtsne", "spam", "MCMCprecision", "jsonlite")
 
 cran.package.check <- lapply(cran.packages, FUN = function(x) {
     if (!require(x, character.only = TRUE)) {
@@ -71,7 +71,7 @@ extractDensityAndCumsum <- function(dataset, tag) {
     out$density$data$y <- d$y
 
     cumsum_x <- sort(dataset, decreasing=T)
-    cumsum_y <- 1:length(x) / length(x)
+    cumsum_y <- 1:length(cumsum_x) / length(cumsum_x)
 
     out$cumsum$data$x <- cumsum_x
     out$cumsum$data$y <- cumsum_y
@@ -667,7 +667,8 @@ for(i in seq_along(process)) {
             JSONsummary <- getSampleSummaryStatsJSON(mergedFilteredSCE)
             write_json(JSONsummary, file.path(directory,
                                               samplename,
-                                              paste0("SCTK_", samplename,'_cellQC_counts.json')))
+                                              paste0("SCTK_", samplename,'_cellQC_counts.json')),
+                                              pretty = TRUE)
         }
 
         if ((dataType == "Droplet") & (!isTRUE(detectCell))) {
@@ -727,7 +728,8 @@ for(i in seq_along(process)) {
             JSONsummary <- getSampleSummaryStatsJSON(mergedFilteredSCE)
             write_json(JSONsummary, file.path(directory,
                                               samplename,
-                                              paste0("SCTK_", samplename,'_cellQC_counts.json')))
+                                              paste0("SCTK_", samplename,'_cellQC_counts.json')), 
+                                              pretty = TRUE)
         }
 
     }

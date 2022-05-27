@@ -1,3 +1,37 @@
+utils_big_as.matrix <- function(
+  sparseMat,
+  n_slices_init=1,
+  verbose=T
+  ) {
+
+  n_slices <- n_slices_init-1
+  while (TRUE) {
+    list_densemat = list()
+    n_slices = n_slices+1
+    if (verbose) message(paste0("n_slices=",n_slices))
+    idx_to = 0
+    for (slice in 1:n_slices) {
+      if (verbose) message(paste0("converting slice ",slice,"/",n_slices))
+      idx_from <- idx_to+1
+      idx_to <- if (slice<n_slices) as.integer(ncol(sparseMat)*slice/n_slices) else ncol(sparseMat)
+      if (verbose) message(paste0("columns ", idx_from,":", idx_to))
+      densemat_sub = try(
+        expr = {
+          as.matrix(sparseMat[,idx_from:idx_to])
+        }, silent = if (verbose) FALSE else TRUE)
+      if ("try-error" %in% class(densemat_sub)) {
+        break # exit to while loop
+      } else {
+        list_densemat[[slice]] = densemat_sub
+      }
+    }
+    if (length(list_densemat)==n_slices) break # exit while loop
+  }
+  if (verbose) message("cbind dense submatrices")
+  densemat <- Reduce(f=cbind, x=list_densemat)
+  return(densemat)
+}
+
 #' Coverts SingleCellExperiment object from R to anndata.AnnData object in
 #' Python
 #'
@@ -17,7 +51,7 @@
     stopifnot(inherits(SCE, "SingleCellExperiment"))
 
     # Extract information that correspond to AnnData structure
-    X <- as.matrix(t(SummarizedExperiment::assay(SCE, useAssay)))
+    X <- utils_big_as.matrix(t(SummarizedExperiment::assay(SCE, useAssay)))
     AnnData <- sc$AnnData(X = X)
     obs <- as.data.frame(SummarizedExperiment::colData(SCE))
     if(length(obs) > 0){
@@ -49,7 +83,7 @@
         oneName <- allAssayNames[i]
         if (!oneName == useAssay) {
             AnnData$layers$'__setitem__'(oneName,
-                                         as.matrix(
+                                         utils_big_as.matrix(
                                              t(SummarizedExperiment::assay(
                                                  SCE, oneName))))
         }
