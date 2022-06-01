@@ -74,5 +74,5 @@ exportSCEtoAnnData <- function(sce,
   annData$write_h5ad(filePath,
                      compression = compression,
                      compression_opts = compressionOpts,
-                     force_dense = forceDense)
+                     as_dense = forceDense)
 }

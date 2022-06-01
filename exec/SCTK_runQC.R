@@ -90,6 +90,7 @@ getSampleSummaryStatsJSON <- function(sce) {
     stats$UMI <- extractDensityAndCumsum(sce$total, "UMI")
     stats$genes <- extractDensityAndCumsum(sce$detected, "genes")
     stats$counts <- extractDensityAndCumsum(colSums(sce@assays@data$counts), "reads")
+    stats$mito <- extractDensityAndCumsum(sce$mito_percent, "mito")
 
     return(stats)
 }
