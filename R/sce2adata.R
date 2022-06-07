@@ -52,7 +52,7 @@ utils_big_as.matrix <- function(
 
     # Extract information that correspond to AnnData structure
     X <- utils_big_as.matrix(t(SummarizedExperiment::assay(SCE, useAssay)))
-    AnnData <- sc$AnnData(X = X, dtype=np.float32)
+    AnnData <- sc$AnnData(X = X, dtype = "float32")
     obs <- as.data.frame(SummarizedExperiment::colData(SCE))
     if(length(obs) > 0){
         AnnData$obs = obs
