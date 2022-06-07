@@ -25,3 +25,19 @@ Tools from both R and Python can be seamlessly integrated within the same analys
 ## Report Issues
 
 If you face any difficulty in installing or have identified a bug in the toolkit, please feel free to open up an [Issue](https://github.com/compbiomed/singleCellTK/issues) on GitHub. Questions about how to best analyze your scRNA-seq data can be asked in the [Discussions](https://github.com/compbiomed/singleCellTK/discussions) page on GitHub. 
+
+## HT special enhancements in this branch
+
+1. Minor fixes to `SCTK_runQC.R` and `R/exportSCEtoAnndata.R` to properly load reticualte conda env and avoid python errors
+
+2. Remove scrublets analysis from `SCTK_runQC.R` since this generates an unusual python error when using scrublets through reticulate
+
+3. Improved function to be able to generate AnnData object output (see `R/sce2anndata.R`)
+
+4. `SCTK_runQC.R` script now saves also a JSON file with some useful data about gene, reads and mitochondrial reads counts
+
+5. `SCTK_runQC.R` script now accepts two arguments `--CellBenderCsv` and `--CellBenderH5` to incorporate cellbender results in the final output objects(s)
+
+**NB.** At the moment the above enhancements for only in split mode so when `--split` is set to `TRUE`.
+
+This branch is available as a docker image from dockerhub `edg1983/sctk:v2.6.0.HT`

@@ -794,6 +794,21 @@ qcInputProcess <- function(preproc,
         cellSCE <- importAlevin(alevinDir = path, sampleName = samplename, class = "Matrix", delayedArray=FALSE)
         return(list(dropletSCE, cellSCE))
     }
+
+    if (preproc == "AnnData") {
+      if (dataType == "Both") {
+        dropletSCE <- importAnnData(sampleDir = path, sampleName = rawFile, class = "Matrix")
+        cellSCE <- importAnnData(sampleDir = path, sampleName = filFile, class = "Matrix")
+      }
+      if (dataType == "Cell") {
+        cellSCE <- importAnnData(sampleDir = path, sampleName = filFile, class = "Matrix")
+      }
+      if (dataType == "Droplet") {
+        dropletSCE <- importAnnData(sampleDir = path, sampleName = rawFile, class = "Matrix")
+      }
+      return(list(dropletSCE, cellSCE))
+    }
+
     ## preproc is not one of the method above. Stop the pipeline.
     stop(paste0("'", preproc, "' not supported."))
 }

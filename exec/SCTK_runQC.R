@@ -4,7 +4,7 @@
 
 ##Check to see if necessary packages are installed
 #CRAN packages
-cran.packages <- c("optparse", "yaml", "igraph", "Rtsne", "spam", "MCMCprecision", "jsonlite")
+cran.packages <- c("hdf5r", "optparse", "yaml", "igraph", "Rtsne", "spam", "MCMCprecision", "jsonlite")
 
 cran.package.check <- lapply(cran.packages, FUN = function(x) {
     if (!require(x, character.only = TRUE)) {
@@ -51,7 +51,6 @@ selectSCTKConda()
     }
 }
 
-
 ## Function to extract useful data from SCE cell object
 extractDensityAndCumsum <- function(dataset, tag) {
     out <- list(
@@ -93,6 +92,42 @@ getSampleSummaryStatsJSON <- function(sce) {
     stats$mito <- extractDensityAndCumsum(sce$mito_percent, "mito")
 
     return(stats)
+}
+
+## Function to integrate cellbender data
+integrate_cellbender <- function(sce, sample_name, cellbender_bc_csv, cellbender_h5) {
+    #annotate cellbender filtered barcodes
+    message(paste0(date(), " .. Annotating cellbender filtered barcodes"))
+    cellbender_pass_bc <- scan(file = cellbender_bc_csv, quiet = T, what="", sep = "\n")
+    cellbender_pass_bc <- paste0(sample_name,"_", cellbender_pass_bc)
+    
+    df_sce <- SingleCellExperiment::colData(sce)
+    df_cb <- data.frame(
+        bc = rownames(df_sce),
+        cellbender_pass = FALSE
+    )
+    df_cb$cellbender_pass[df_cb$bc %in% cellbender_pass_bc] <- TRUE
+    sce@colData$cellbender_pass <- df_cb$cellbender_pass
+    
+    #Add cellbender counts
+    message(paste0(date(), " .. Loading cellbender data from ", cellbender_h5))
+    cb_h5 <- Seurat::Read10X_h5(cellbender_h5, unique.features = FALSE)
+
+    #Set rownames and colnames to match sce
+    message("set row names and col names for cellbender data")
+    rownames(cb_h5) <- rownames(SingleCellExperiment::rowData(sce))
+    colnames(cb_h5) <- rownames(SingleCellExperiment::colData(sce))
+
+    #Get count matrix for cellbender filtered barcodes
+    message("select cellbender filtered barcodes")
+    cb_filt_h5 <- cb_h5[,cellbender_pass_bc]
+
+    #Add cellbender corrected values to sce object
+    message("add cellbender corrected values to sce object")
+    sce@assays@data@listData$cellbender_counts <- cb_h5
+    sce@assays@data@listData$cellbender_filtered_counts <- cb_filt_h5
+
+    return(sce)
 }
 
 ### helper function for importing Mito gene set
@@ -225,8 +260,17 @@ option_list <- list(optparse::make_option(c("-b", "--basePath"),
     optparse::make_option(c("-Q", "--QCReport"),
         type="logical",
         default=FALSE,
-        help="Generates QC report when the SCTK-QC pipeline is finished. Default if TRUE")
+        help="Generates QC report when the SCTK-QC pipeline is finished. Default if TRUE"),
+    optparse::make_option(c("--CellBenderCsv"),
+        type="character",
+        default=NULL,
+        help="The full path of the CellBender CSV file containing the list of filtered barcodes."),
+    optparse::make_option(c("--CellBenderH5"),
+        type="character",
+        default=NULL,
+        help="The full path of the CellBender H5 file containing the full data matrix.")
     )
+
 ## Define arguments
 arguments <- optparse::parse_args(optparse::OptionParser(option_list=option_list), positional_arguments=TRUE)
 opt <- arguments$options
@@ -255,6 +299,9 @@ CombinedSamplesName <- opt[["outputPrefix"]]
 MitoImport <- opt[["detectMitoLevel"]]
 MitoType <- opt[["mitoType"]]
 QCReport <- opt[["QCReport"]]
+cellBender_csv <- opt[["CellBenderCsv"]]
+cellBender_h5 <- opt[["CellBenderH5"]]
+add_cellbender <- FALSE
 
 print("The output directory is")
 print(directory)
@@ -274,6 +321,15 @@ if (!is.null(FilterFile)) { FilterFile <- unlist(strsplit(opt[["cellData"]], ","
 if (!is.null(formats)) { formats <- unlist(strsplit(opt[["outputFormat"]], ",")) }
 
 if (!is.null(studyDesign)) { studyDesign <- base::readLines(studyDesign, n=-1) }
+
+cellbender_args <- sum(is.null(cellBender_csv), is.null(cellBender_h5))
+if(!(cellbender_args == 2 | cellbender_args == 0)) {
+    stop("Either both CellBender CSV and CellBender H5 files should be provided or both should be NULL")
+}
+if (cellbender_args == 0) { 
+    message(paste0(date(), " .. CellBender files provided. Adding CellBender to the pipeline"))
+    add_cellbender = TRUE 
+}
 
 if (is.null(subTitles)) {
     subTitles <- paste("SCTK QC HTML report for sample", sample)
@@ -320,7 +376,6 @@ if (numCores > 1) {
     #Params$doubletCells$BPPARAM <- parallelParam
     Params$doubletFinder$nCores <- numCores
 }
-
 
 ### checking output formats
 if (!all(formats %in% c("SCE", "AnnData", "FlatFile", "HTAN", "Seurat"))) {
@@ -612,6 +667,8 @@ for(i in seq_along(process)) {
 
 
     if (isTRUE(split)) {
+        message(paste0(date(), " .. split is TRUE, output one report per sample"))
+        
         ### assign sample to every runBarcodeRanksMetaOutput metadata slot
         if (!is.null(mergedDropletSCE)) {
             names(metadata(mergedDropletSCE)$runBarcodeRanksMetaOutput) <- samplename
@@ -624,12 +681,15 @@ for(i in seq_along(process)) {
                     names(metadata(mergedFilteredSCE)[[name]]) <- samplename
                 }
             }
+            if (add_cellbender) {
+                message(paste0(date(), " .. Adding cellbender metadata"))
+                mergedFilteredSCE <- integrate_cellbender(mergedFilteredSCE, samplename, cellBender_csv, cellBender_h5)
+            }
         }
 
         if ((dataType == "Both") | (dataType == "Droplet" & isTRUE(detectCell))) {
             exportSCE(inSCE = mergedDropletSCE, samplename = samplename, directory = directory, type = "Droplets", format=formats)
             exportSCE(inSCE = mergedFilteredSCE, samplename = samplename, directory = directory, type = "Cells", format=formats)
-
 
             ## Get parameters of QC functions
             getSceParams(inSCE = mergedFilteredSCE, directory = directory,
@@ -661,15 +721,21 @@ for(i in seq_along(process)) {
 
             ## generate QC metrics table for mergedFilteredSCE
             mergedFilteredSCE <- sampleSummaryStats(mergedFilteredSCE, simple=FALSE, sample = colData(mergedFilteredSCE)$sample) #colData(cellSCE)$Study_ID
+            
+            message(paste0(date(), " .. Generating QC metrics summary table"))
             QCsummary <- getSampleSummaryStatsTable(mergedFilteredSCE, statsName = "qc_table")
             write.csv(QCsummary, file.path(directory,
                                            samplename,
                                            paste0("SCTK_", samplename,'_cellQC_summary.csv')))
+            
+            message(paste0(date(), " .. Saving JSON for QC metrics"))
             JSONsummary <- getSampleSummaryStatsJSON(mergedFilteredSCE)
             write_json(JSONsummary, file.path(directory,
                                               samplename,
                                               paste0("SCTK_", samplename,'_cellQC_counts.json')),
                                               pretty = TRUE)
+
+            message(paste0(date(), " .. All DONE!"))
         }
 
         if ((dataType == "Droplet") & (!isTRUE(detectCell))) {
@@ -739,10 +805,15 @@ for(i in seq_along(process)) {
 }
 
 if (!isTRUE(split)) {
+    message(paste0(date(), " .. split is FALSE, merging all reports"))
 
     if (length(sample) > 1) {
         samplename <- CombinedSamplesName #paste(sample, collapse="-")
         subTitle <- paste("SCTK QC HTML report for sample", samplename)
+    }
+
+    if (add_cellbender) {
+        message(paste0(date(), " .. WARNING - Adding CellBender data is possible only in split mode. Skipping CellBender data."))
     }
 
     if ((dataType == "Both") | (dataType == "Droplet" & isTRUE(detectCell))) {
@@ -886,6 +957,7 @@ if (!isTRUE(split)) {
 }
 
 if (("FlatFile" %in% formats)) {
+    message(paste0(date(), " .. Saving flat files"))
     HTANLevel3 <- do.call(base::rbind, level3Meta)
     HTANLevel4 <- do.call(base::rbind, level4Meta)
     write.csv(HTANLevel3, file = file.path(directory, "level3Meta.csv"))
