@@ -105,7 +105,7 @@ exportSCE <- function(inSCE,
         fp <- file.path(directory, samplename, "Python")
         dir.create(fp, showWarnings = TRUE, recursive = TRUE)
         fn <- file.path(fp, type)
-        exportSCEtoAnnData(inSCE, outputDir=fn, compression='gzip', prefix=samplename)
+        exportSCEtoAnnData(inSCE, outputDir=fn, compression='None', prefix=samplename)
     }
 
     if ("Seurat" %in% format) {
