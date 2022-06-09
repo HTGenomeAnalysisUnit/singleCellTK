@@ -1009,18 +1009,18 @@ convertSCEToSeurat <- function(inSCE, countsAssay = NULL, normAssay = NULL,
 
   # Create Seurat object and Set counts assay
   # If no counts assay is supplied, the first assay is used
-  if (!is.null(countsAssay) && countsAssay %in% names(assays(inSCE))) {
-    temp <- .convertToMatrix(assay(inSCE, countsAssay))
+  if (!is.null(countsAssay) && countsAssay %in% names(inSCE@assays)) {
+    temp <- .convertToMatrix(inSCE@assays@data[[countsAssay]])
   } else {
-    temp <- .convertToMatrix(assays(inSCE)[[1]])
+    temp <- .convertToMatrix(inSCE@assays@data[[1]])
   }
   rownames(temp) <- seuratRowNames
   colnames(temp) <- seuratColNames
   seuratObject <- Seurat::CreateSeuratObject(counts = temp)
 
   # Set normalized assay
-  if (!is.null(normAssay) && normAssay %in% names(assays(inSCE))) {
-    tempMatrix <- .convertToMatrix(assay(inSCE, normAssay))
+  if (!is.null(normAssay) && normAssay %in% names(inSCE@assays)) {
+    tempMatrix <- .convertToMatrix(inSCE@assays@data[[normAssay]])
     if(inherits(tempMatrix, "dgeMatrix")){
       tempMatrix <- methods::as(tempMatrix, "dgCMatrix")
     }
@@ -1030,8 +1030,8 @@ convertSCEToSeurat <- function(inSCE, countsAssay = NULL, normAssay = NULL,
   }
 
   # Set Scaled Assay
-  if (!is.null(scaledAssay) && scaledAssay %in% names(assays(inSCE))) {
-    seuratObject@assays$RNA@scale.data <- as.matrix(assay(inSCE, scaledAssay))
+  if (!is.null(scaledAssay) && scaledAssay %in% names(inSCE@assays)) {
+    seuratObject@assays$RNA@scale.data <- as.matrix(inSCE@assays@data[[scaledAssay]])
     rownames(seuratObject@assays$RNA@scale.data) <- seuratRowNames
     colnames(seuratObject@assays$RNA@scale.data) <- seuratColNames
   }
@@ -1091,12 +1091,27 @@ convertSCEToSeurat <- function(inSCE, countsAssay = NULL, normAssay = NULL,
 
   # Set 'decontXCounts' assay to seurat object if required
   if ("decontXcounts" %in% SummarizedExperiment::assayNames(inSCE) && copyDecontX) {
-    decontM <- SummarizedExperiment::assay(inSCE, "decontXcounts")
+    decontM <- inSCE@assays@data[["decontXcounts"]]
     colnames(decontM) <- colnames(seuratObject)
     rownames(decontM) <- gsub('_', '-', rownames(decontM))
     seuratObject[["decontXcounts"]] <- Seurat::CreateAssayObject(counts = .convertToMatrix(decontM))
   }
   
+  #Add additional assays from inSCE object if required
+  for (newAssay in names(inSCE@assays)) {
+    if (!newAssay %in% names(seuratObject@assays)) {
+      message("Adding assay '", newAssay, "' from input SCE object to seurat object.")
+      assay_data <- inSCE@assays@data[[newAssay]]
+      if (sum(dim(assay_data) == dim(seuratObject)) < 2) {
+        message("Warning: assay '", newAssay, "' from input SCE object has different dimensions than the seurat object. Skipping.")
+        next
+      }
+      colnames(assay_data) <- colnames(seuratObject)
+      rownames(assay_data) <- gsub('_', '-', rownames(assay_data))
+      seuratObject[[newAssay]] <- Seurat::CreateAssayObject(counts = .convertToMatrix(assay_data)) 
+    }
+  }
+
   # Ensuring that colnames from input SCE converted to Seurat object are same in the Seurat metadata slot
   rownames(seuratObject@meta.data) <- colnames(seuratObject)
 

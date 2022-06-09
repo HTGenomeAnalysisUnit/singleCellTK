@@ -85,7 +85,7 @@ exportSCE <- function(inSCE,
     dir.create(file.path(directory, samplename), showWarnings = TRUE, recursive = TRUE)
 
     if ("SCE" %in% format) {
-        ## Export to R
+        message("Export to SCE object.")
         fp <- file.path(directory, samplename, "R")
         dir.create(fp, showWarnings = TRUE, recursive = TRUE)
         fn <- file.path(fp, paste0(samplename , paste0("_", type, ".rds")))
@@ -93,7 +93,7 @@ exportSCE <- function(inSCE,
     }
 
     if ("FlatFile" %in% format) {
-        ## Export to flatfile
+        message("Export to flatfile")
         fp <- file.path(directory, samplename, "FlatFile")
         dir.create(fp, showWarnings = TRUE, recursive = TRUE)
         fn <- file.path(fp, type)
@@ -101,7 +101,7 @@ exportSCE <- function(inSCE,
     }
 
     if ("AnnData" %in% format) {
-        ## Export to Python AnnData
+        message("Export to Python AnnData")
         fp <- file.path(directory, samplename, "Python")
         dir.create(fp, showWarnings = TRUE, recursive = TRUE)
         fn <- file.path(fp, type)
@@ -109,7 +109,7 @@ exportSCE <- function(inSCE,
     }
 
     if ("Seurat" %in% format) {
-        ## Export to Seurat object
+        message("Export to Seurat object")
         fp <- file.path(directory, samplename, "Seurat")
         dir.create(fp, showWarnings = TRUE, recursive = TRUE)
         prefix <- paste0(samplename , paste0("_", type, ".rds"))

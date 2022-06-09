@@ -688,7 +688,10 @@ for(i in seq_along(process)) {
         }
 
         if ((dataType == "Both") | (dataType == "Droplet" & isTRUE(detectCell))) {
+            message(paste0(date(), " .. Writing droplet output"))
             exportSCE(inSCE = mergedDropletSCE, samplename = samplename, directory = directory, type = "Droplets", format=formats)
+            
+            message(paste0(date(), " .. Writing filtered output"))
             exportSCE(inSCE = mergedFilteredSCE, samplename = samplename, directory = directory, type = "Cells", format=formats)
 
             ## Get parameters of QC functions
