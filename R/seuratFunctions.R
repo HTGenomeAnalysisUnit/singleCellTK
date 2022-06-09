@@ -1099,7 +1099,7 @@ convertSCEToSeurat <- function(inSCE, countsAssay = NULL, normAssay = NULL,
   
   #Add additional assays from inSCE object if required
   for (newAssay in names(inSCE@assays)) {
-    if (!newAssay %in% names(seuratObject@assays)) {
+    if (!(newAssay %in% names(seuratObject@assays)) & newAssay != countsAssay) {
       message("Adding assay '", newAssay, "' from input SCE object to seurat object.")
       assay_data <- inSCE@assays@data[[newAssay]]
       if (sum(dim(assay_data) == dim(seuratObject)) < 2) {

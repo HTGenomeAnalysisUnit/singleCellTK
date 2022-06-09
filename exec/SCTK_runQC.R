@@ -119,13 +119,13 @@ integrate_cellbender <- function(sce, sample_name, cellbender_bc_csv, cellbender
     colnames(cb_h5) <- rownames(SingleCellExperiment::colData(sce))
 
     #Get count matrix for cellbender filtered barcodes
-    message("select cellbender filtered barcodes")
-    cb_filt_h5 <- cb_h5[,cellbender_pass_bc]
+    #message("select cellbender filtered barcodes")
+    #cb_filt_h5 <- cb_h5[,cellbender_pass_bc]
 
     #Add cellbender corrected values to sce object
     message("add cellbender corrected values to sce object")
     sce@assays@data@listData$cellbender_counts <- cb_h5
-    sce@assays@data@listData$cellbender_filtered_counts <- cb_filt_h5
+    #sce@assays@data@listData$cellbender_filtered_counts <- cb_filt_h5
 
     return(sce)
 }
