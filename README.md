@@ -28,15 +28,17 @@ If you face any difficulty in installing or have identified a bug in the toolkit
 
 ## HT special enhancements in this branch
 
-1. Minor fixes to `SCTK_runQC.R` and `R/exportSCEtoAnndata.R` to properly load reticualte conda env and avoid python errors
+1. Minor fixes to `SCTK_runQC.R` and `R/exportSCEtoAnndata.R` to properly load reticulate conda env and avoid python errors
 
 2. Remove scrublets analysis from `SCTK_runQC.R` since this generates an unusual python error when using scrublets through reticulate
 
-3. Improved function to be able to generate AnnData object output (see `R/sce2anndata.R`)
+3. Improved function to be able to generate AnnData object output. This fixes a crash due to conversion of large dense matrix. The script now split the matrix if an error occurs and then cbind resulting sub-matrixes after conversion (see `R/sce2anndata.R`)
 
-4. `SCTK_runQC.R` script now saves also a JSON file with some useful data about gene, reads and mitochondrial reads counts
+4. Minor tweaks to `R/seuratFunctions.R` to properly store Seurat objects for additional layers.
 
-5. `SCTK_runQC.R` script now accepts two arguments `--CellBenderCsv` and `--CellBenderH5` to incorporate cellbender results in the final output objects(s)
+5. `SCTK_runQC.R` script now saves also a JSON file with some useful data about gene, reads and mitochondrial reads counts
+
+6. `SCTK_runQC.R` script now accepts two arguments `--CellBenderCsv` and `--CellBenderH5` to incorporate cellbender results in the final output objects(s)
 
 **NB.** At the moment the above enhancements for only in split mode so when `--split` is set to `TRUE`.
 
