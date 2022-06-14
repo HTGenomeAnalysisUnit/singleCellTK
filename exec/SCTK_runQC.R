@@ -109,24 +109,28 @@ integrate_cellbender <- function(sce, sample_name, cellbender_bc_csv, cellbender
     df_cb$cellbender_pass[df_cb$bc %in% cellbender_pass_bc] <- TRUE
     sce@colData$cellbender_pass <- df_cb$cellbender_pass
     
-    #Add cellbender counts
+    #Read cellbender counts
     message(paste0(date(), " .. Loading cellbender data from ", cellbender_h5))
     cb_h5 <- Seurat::Read10X_h5(cellbender_h5, unique.features = FALSE)
 
-    #Set rownames and colnames to match sce
-    message("set row names and col names for cellbender data")
+    #Set rownames (gene ids) to match sce
+    #Note that here we assume the same cellranger output was used for both cellbender and sce
+    message("Set gene ids for cellbender data")
     rownames(cb_h5) <- rownames(SingleCellExperiment::rowData(sce))
-    colnames(cb_h5) <- rownames(SingleCellExperiment::colData(sce))
 
-    #Get count matrix for cellbender filtered barcodes
-    #message("select cellbender filtered barcodes")
-    #cb_filt_h5 <- cb_h5[,cellbender_pass_bc]
+    #Subset cellbender cells to match sce
+    colnames(cb_h5) <- paste0(sample_name, "_", colnames(cb_h5))
+    subset_cb_h5 <- cb_h5[,colnames(sce)]
 
-    #Add cellbender corrected values to sce object
-    message("add cellbender corrected values to sce object")
-    sce@assays@data@listData$cellbender_counts <- cb_h5
-    #sce@assays@data@listData$cellbender_filtered_counts <- cb_filt_h5
-
+    #Check dimensions are the same otherwise throw warning
+    if (sum(dim(subset_cb_h5) == dim(sce)) == 2) {
+        message("add cellbender corrected values to sce object")
+        sce@assays@data@listData$cellbender_counts <- subset_cb_h5
+    } else {
+        message(paste0(date(), " .. WARNING - Dimensions of cellbender data and sce data are different. ",
+            "Unable to merge cellbender data with sce data, only filtered barcodes annotation will be used."))
+    }
+    
     return(sce)
 }
 
