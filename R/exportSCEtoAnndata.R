@@ -41,6 +41,7 @@ exportSCEtoAnnData <- function(sce,
   
   reticulate::use_condaenv(condaenv = "sctk-reticulate", required = TRUE)
   if (!reticulate::py_module_available(module = "scanpy")) {
+    message(paste0(date(), " .. WARNING! scanpy not available. Please install scanpy to save AnnData objects."))
     warning("Cannot find python module 'scanpy', please install Conda and",
             " run sctkPythonInstallConda() or run sctkPythonInstallVirtualEnv().",
             "If one of these have been previously run to install the modules,",
