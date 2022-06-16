@@ -22,7 +22,7 @@ bioc.package.check <- lapply(bioc.packages, FUN = function(x) {
 })
 
 #Initialise conda environment
-selectSCTKConda()
+#selectSCTKConda()
 
 ## Function to parse arguments from yaml file
 .parseConfig <- function(sctkConfig, arguments) {
