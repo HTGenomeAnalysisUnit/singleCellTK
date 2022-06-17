@@ -79,7 +79,7 @@ exportSCEtoAnnData <- function(sce,
     as_dense = vector()
   }
   
-  message("Writing annData to file: " + filePath)
+  message("Writing annData to file: ", filePath)
   annData$write_h5ad(filename = filePath,
                      compression = compression,
                      compression_opts = compressionOpts,
