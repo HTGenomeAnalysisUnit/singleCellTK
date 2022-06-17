@@ -51,14 +51,20 @@ utils_big_as.matrix <- function(
     stopifnot(inherits(SCE, "SingleCellExperiment"))
 
     # Extract information that correspond to AnnData structure
-    X <- utils_big_as.matrix(t(SummarizedExperiment::assay(SCE, useAssay)))
-    AnnData <- sc$AnnData(X = X, dtype = "float32")
+    #X <- utils_big_as.matrix(t(SummarizedExperiment::assay(SCE, useAssay)))
+    X <- t(SummarizedExperiment::assay(SCE, useAssay))
+    message("Initialize AnnData using ", useAssay)
+    AnnData <- sc$AnnData(X = X, dtype = 'float32')
+
+    message("Copy obs data")
     obs <- as.data.frame(SummarizedExperiment::colData(SCE))
     if(length(obs) > 0){
         AnnData$obs = obs
     } else {
         AnnData$obs_names <- colnames(SCE)
     }
+
+    message("Copy var data")
     var <- as.data.frame(SummarizedExperiment::rowData(SCE))
     if(length(var) > 0){
         AnnData$var = var
@@ -69,6 +75,8 @@ utils_big_as.matrix <- function(
     # if(length(uns) > 0){
     #     AnnData$uns <- uns
     # }
+
+    message("Copy obsm data")   
     obsmNames <- SingleCellExperiment::reducedDimNames(SCE)
     if(length(obsmNames) > 0){
         for (i in seq_along(obsmNames)) {
@@ -78,14 +86,15 @@ utils_big_as.matrix <- function(
     }
 
     # Furthermore, the other assays will for now also be saved to .layers
+    message("Copy additional layers data")
     allAssayNames <- SummarizedExperiment::assayNames(SCE)
     for (i in seq_along(allAssayNames)) {
         oneName <- allAssayNames[i]
         if (!oneName == useAssay) {
+          message("Adding layer ", oneName)
             AnnData$layers$'__setitem__'(oneName,
-                                         utils_big_as.matrix(
                                              t(SummarizedExperiment::assay(
-                                                 SCE, oneName))))
+                                                 SCE, oneName)))
         }
     }
     return(AnnData)
